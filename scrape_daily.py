@@ -17,8 +17,8 @@ scraper_cfg = {
     'scrape_only_missing_dates': False,
     'min_tweets': 1}
 session_cfg = {
-    'session_begin_date': (datetime.now() - timedelta(days=14)).date(),
-    'session_end_date': (datetime.now() - timedelta(days=15)).date(),
+    'session_begin_date': (datetime.now() - timedelta(days=15)).date(),
+    'session_end_date': (datetime.now() - timedelta(days=14)).date(),
     'time_delta': 1}
 c = {}
 c.update(scraper_cfg)
@@ -31,4 +31,4 @@ pprint(c)
 input("Press Enter to continue...")
 
 scrape = TwitterScrapingSession(c)
-scrape.profiles.tweets.users_all.start()
+scrape.profiles.users_all.start()
