@@ -96,10 +96,11 @@ class TwitterScrapingSession:
 
     def rescrape_dead_periods(self, session_id=-1):
         self.rescrape = True
+        i = input('Rescrape session_id = ')
+        session_id = int(i) if i else 0 or session_id
         self.usersnames_df = get_dead_tweets_periods(session_id=session_id)
         logger.warning(f'Rescraping following periods')
         print(self.usersnames_df)
-        self.session_id *= -1
         self.scrape_tweets = True
         return self
 
@@ -198,7 +199,7 @@ class TwitterScrapingSession:
                 tweet_scraper = TweetScraper(self.c)
                 tweet_scraper.proxy_server = proxy
                 logger.info(
-                    f'Start scraping tweets | {username}, {period_begin_date} | {period_end_date}, {proxy["ip"]}:{proxy["port"]}, queue={self.proxy_queue.qsize()}, fail={fail_counter}')
+                    f'Start scraping tweets | {username}, {period_begin_date}/{period_end_date}, {proxy["ip"]}:{proxy["port"]}, queue={self.proxy_queue.qsize()}, fail={fail_counter}')
                 try:
                     tweets_df = tweet_scraper.execute_scraping(username, period_begin_date, period_end_date)
                 except ValueError as e:
@@ -337,6 +338,7 @@ class TwitterScrapingSession:
                    'scrape_n_used_total', 'scrape_n_failed_total', 'last_flag', 'fail_ratio']
         # Sort by ratio
         proxy_df.sort_values('fail_ratio', inplace=True)
+        proxy_df.reset_index(drop=True, inplace=True)
         print(proxy_df[columns])
         for _, proxy in proxy_df.iterrows():
             self.proxy_queue.put({'ip': proxy['ip'], 'port': proxy['port']})
@@ -346,4 +348,6 @@ class TwitterScrapingSession:
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
+    ts = TwitterScrapingSession()
+    ts._populate_proxy_queue()
     pass
