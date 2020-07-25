@@ -17,8 +17,8 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 
 from config import LOG_LEVEL
+from database.proxy_facade import get_proxies, save_a_proxy_test
 from scraper.business.twitter_scraper import TweetScraper
-from scraper.database.proxy_facade import get_proxies, save_a_proxy_test
 from tools.logger import logger
 from tools.utils import set_pandas_display_options
 

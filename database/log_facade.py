@@ -7,7 +7,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from scraper.database.log_queries import q_save_log, q_get_max_sesion_id, q_get_dead_tweets_periods_logs
+from database.log_queries import q_save_log, q_get_max_sesion_id, q_get_dead_tweets_periods_logs
 
 """
 Group of functions to store and retrieve log data via one or more queries from one or more collections.

@@ -7,8 +7,8 @@ from datetime import datetime
 
 import pandas as pd
 
-from scraper.database.profile_queries import q_get_a_profile, q_save_a_profile, q_get_profiles
-from scraper.database.tweet_queries import q_get_nr_tweets_per_day, q_save_a_tweet, q_update_a_tweet
+from database.profile_queries import q_get_a_profile, q_save_a_profile, q_get_profiles
+from database.tweet_queries import q_get_nr_tweets_per_day, q_save_a_tweet, q_update_a_tweet
 from tools.logger import logger
 from tools.utils import set_pandas_display_options
 

@@ -6,7 +6,7 @@
 
 import pandas as pd
 
-from scraper.database.proxy_queries import q_save_a_proxy, q_get_proxies, q_update_a_proxy_test, \
+from database.proxy_queries import q_save_a_proxy, q_get_proxies, q_update_a_proxy_test, \
     q_reset_proxy_stats, q_update_proxy_stats, q_update_proxy_ratio  # , q_update_proxy_stats, q_reset_proxy_stats
 from tools.utils import set_pandas_display_options
 

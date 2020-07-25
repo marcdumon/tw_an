@@ -5,8 +5,8 @@
 # --------------------------------------------------------------------------------------------------------
 # TODO: NEEDS REFACTORING
 
+from database.proxy_facade import reset_proxies_stats, save_proxies
 from scraper.business.proxy_scraper import ProxyScraper
-from scraper.database.proxy_facade import reset_proxies_stats, save_proxies
 from tools.logger import logger
 
 

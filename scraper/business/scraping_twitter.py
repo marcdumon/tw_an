@@ -15,11 +15,11 @@ from random import random
 import pandas as pd
 from aiohttp import ServerDisconnectedError, ClientOSError, ClientHttpProxyError, ClientProxyConnectionError
 
+from database.log_facade import log_scraping_profile, log_scraping_tweets, get_max_sesion_id, get_dead_tweets_periods
+from database.proxy_facade import get_proxies, update_proxy_stats, update_proxies_ratio
+from database.twitter_facade import get_join_date, get_nr_tweets_per_day, save_tweets, save_a_profile, get_a_profile
+from database.twitter_facade import get_usernames
 from scraper.business.twitter_scraper import TweetScraper, ProfileScraper
-from scraper.database.log_facade import log_scraping_profile, log_scraping_tweets, get_max_sesion_id, get_dead_tweets_periods
-from scraper.database.proxy_facade import get_proxies, update_proxy_stats, update_proxies_ratio
-from scraper.database.twitter_facade import get_join_date, get_nr_tweets_per_day, save_tweets, save_a_profile, get_a_profile
-from scraper.database.twitter_facade import get_usernames
 from tools.logger import logger
 
 """
