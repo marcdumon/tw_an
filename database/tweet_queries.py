@@ -6,7 +6,7 @@
 import sys
 from datetime import datetime
 
-from pymongo import MongoClient, ASCENDING
+from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
 
 from config import DATABASE
@@ -52,20 +52,6 @@ def setup_collection():  # Todo: add indexes
     collection.create_index('tweet_id', unique=True)
 
 
-def q_get_nr_tweets_per_day(username, begin_date=datetime(2000, 1, 1), end_date=datetime(2035, 1, 1)):
-    collection = get_collection()
-
-    m = {'$match': {'username': username,
-                    'datetime': {'$gte': begin_date,
-                                 '$lte': end_date}}}
-    g = {'$group': {'_id': '$date',
-                    'nr_tweets': {'$sum': 1}}}
-    p = {'$project': {'date': {'$dateFromString': {'dateString': '$_id'}},
-                      'nr_tweets': 1, '_id': 0}}
-    s = {'$sort': {'date': ASCENDING}}
-
-    cursor = collection.aggregate([m, g, p, s])
-    return list(cursor)
 
 
 def q_save_a_tweet(tweet):
