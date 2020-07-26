@@ -28,11 +28,13 @@ IMPLEMENTED QUERIES AND FUNCTIONS
 
 # - q_copy_field
 """
+from datetime import datetime
 
 from pymongo import MongoClient
 
 # from config import DATABASE
 from config import DATABASE
+from database.twitter_facade import get_a_profile
 from tools.logger import logger
 
 database = DATABASE
@@ -77,6 +79,22 @@ def q_add_field(collection_name, field_name, value=None):
 #     u = {'$set': {to_field_name: f'${from_field_name}'}}
 #     result = collection.update_many(f, u, False, None, True)
 #     logger.info(f'Result copy field {from_field_name} to {to_field_name}: {result.raw_result}')
+
+def blacklist_profiles():
+    usernames = [
+        'lijstdedecker',  # 0 tweets (2020-07-26)
+        'mauritsvdr',  # canceled account
+        'elhammouchiothm',  # canceled account
+        'ludwigvandenho1',  # 0 tweets (2020-07-26)
+    ]
+    collection = get_collection('profiles')
+    for username in usernames:
+        profile = get_a_profile(username)
+        if profile:
+            f = {'username': profile['username']}
+            u = {'$set': {'blacklisted': True,
+                          'timestamp': datetime.now()}}
+            collection.update_one(f, u)
 
 
 if __name__ == '__main__':
