@@ -54,14 +54,14 @@ def setup_collection():  # Todo: add indexes
 
 def q_get_a_profile(username):
     collection = get_collection()
-    q = {'username': username}
+    q = {'username': username, 'blacklisted': False}
     doc = collection.find_one(q)
     return doc
 
 
 def q_get_profiles():
     collection = get_collection()
-    cursor = collection.find().sort([('username', 1)])
+    cursor = collection.find({'blacklisted': False}).sort([('username', 1)])
     return list(cursor)
 
 
@@ -81,6 +81,7 @@ def q_save_a_profile(profile):
                       'verified': profile['verified'],
                       'background_image': profile['background_image'],
                       'avatar': profile['avatar'],
+                      'blacklisted': False
                       },
              '$push': {'timestamp': datetime.now(),
                        'followers': int(profile['followers']),
