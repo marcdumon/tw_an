@@ -77,9 +77,9 @@ class DataFactory:
             for freq in ['D', 'W', 'M', 'A']:
                 stats = self._calculate_stats(tweet_datetimes, freq)
                 if self.is_populate:
-                    populate_stats(username, stats, freq)
+                    populate_stats(username, freq, stats)
                 else:
-                    update_stats(username, stats, freq)
+                    update_stats(username, freq, stats)
             return stats
         else:
             logger.error(f'User has no tweets | {username}')

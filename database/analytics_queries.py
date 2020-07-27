@@ -187,6 +187,9 @@ def q_update_a_year_stat(username, freq, stats):
 
 
 def q_populate_stats(username, freq, stats):
+    """
+    This only works with a unique index on username+year
+    """
     collection = get_collection(stat_collection_name)
     dts = stats['datetime'].to_list()
     years = sorted(set([dt.year for dt in dts]))
@@ -232,6 +235,22 @@ def q_populate_stats(username, freq, stats):
             }
             requests.append(UpdateOne(f, u, True))
         q_bulk_write_a_stat(requests)
+
+
+def q_get_stats(username, freq):
+    collection = get_collection(stat_collection_name)
+    f = {
+        'username': username,
+        f'{freq}': {'$exists': True}
+    }
+    p = {
+        'username': 1,
+        f'{freq}': 1,
+        '_id': -1
+    }
+    result = collection.find(f, p)
+
+    return list(result)
 
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from database.analytics_queries import q_get_nr_tweets_per_day, q_get_tweet_datetimes, q_populate_stats, q_delete_all_stats
+from database.analytics_queries import q_get_nr_tweets_per_day, q_get_tweet_datetimes, q_populate_stats, q_delete_all_stats, q_get_stats, q_update_a_year_stat
 from tools.logger import logger
 from tools.utils import set_pandas_display_options
 
@@ -41,14 +41,15 @@ def get_tweet_datetimes(username, begin_date=datetime(2000, 1, 1), end_date=date
     return pd.DataFrame(tweet_datetimes)
 
 
-def update_stats(username, stats, freq):
+def update_stats(username, freq, stats):
     stats['datetime'] = stats.index.values
-    # q_update_a_year_stat(username, freq, stats)
+    q_update_a_year_stat(username, freq, stats)
+    # q_populate_stats(username, freq, stats)
+
+
+def populate_stats(username, freq, stats):
+    stats['datetime'] = stats.index.values
     q_populate_stats(username, freq, stats)
-
-
-def populate_stats(username, stats, freq):
-    pass
 
 
 def delete_all_stats():
@@ -57,5 +58,15 @@ def delete_all_stats():
     q_delete_all_stats()
 
 
+def get_stats(username, freq):
+    stats = q_get_stats(username, freq)
+    df = pd.DataFrame()
+    for stat in stats:
+        df = df.append(pd.DataFrame(stat[f'{freq}']))
+
+    return df
+
+
 if __name__ == '__main__':
     pass
+    print(get_stats('amartelaer', 'M'))
