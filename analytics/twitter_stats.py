@@ -19,7 +19,7 @@ cfg = {
 }
 
 
-class DataFactory:
+class TwitterStats:
     def __init__(self, config=None):
         if config: cfg.update(config)
         self.c = cfg
@@ -27,7 +27,7 @@ class DataFactory:
         self.end_date = self.c['end_date']
         self.usernames_df = None
         self.stats_job = False
-        self.tokens_job = False
+        self.metadata_job = False
         self.is_populate = False
 
     # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -51,7 +51,6 @@ class DataFactory:
     @property
     def populate(self):
         self.is_populate = True
-        delete_all_stats()
         return self
 
     @property
@@ -60,8 +59,8 @@ class DataFactory:
         return self
 
     @property
-    def tokens(self):
-        self.tokens_job = False
+    def metadata(self):
+        self.metadata_job = False
         return self
 
     def run(self):
@@ -85,6 +84,9 @@ class DataFactory:
             logger.error(f'User has no tweets | {username}')
             return
 
+    def save_metadata(self, username):
+        pass
+
     def _calculate_stats(self, tweet_datetimes, freq):
         tweet_datetimes = tweet_datetimes.set_index('datetime')
         tweets_per_day = tweet_datetimes['n_tweets'].resample('D').sum()
@@ -98,4 +100,6 @@ class DataFactory:
 
 
 if __name__ == '__main__':
-    pass
+    ts = TwitterStats()
+    # ts.users_sample(1).populate.stats.run()
+    ts.users_sample(1).metadata.run()

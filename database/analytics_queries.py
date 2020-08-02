@@ -35,7 +35,9 @@ IMPLEMENTED QUERIES
 
 """
 database = DATABASE
-stat_collection_name = 'analytics_stats'
+stat_collection_name = 'twitter_stats'
+# token_collection_name = 'tokens_stats'
+tweets_collection_name = 'tweets'
 
 
 def get_collection(col=stat_collection_name):  # Todo: Replace get_collection() with get_collection(col=collection_name) everywhere
@@ -46,7 +48,56 @@ def get_collection(col=stat_collection_name):  # Todo: Replace get_collection() 
     return collection
 
 
-def setup_collection():
+# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# TOKENS
+# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+def q_get_tweets(username, begin_date, end_date):
+    collection = get_collection(tweets_collection_name)
+    f = {
+        'username': username,
+        'datetime': {
+            '$gte': begin_date,
+            '$lte': end_date,
+        }
+    }
+    p = {
+        '_id': 0,
+        'username': 1,
+        'tweet_id': 1,
+        'datetime': 1,
+        'tweet': 1,
+        'hashtags': 1
+    }
+    result = collection.find(f, p)
+    return list(result)
+
+
+def upsert_tokens():
+    pass
+    d = {
+        'username': '',
+        'year': 0,
+        'month': 0,
+        'metadata': [{
+            'tweet_id': '',
+            'datetime': None,
+            'metadata': [],
+            'emojis': [],
+            'hashtags': [],
+            'n_tokens': 0,
+            'n_emojis': 0,
+            'n_hashtags': 0
+        }]
+    }
+
+
+# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# STATS
+# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+def setup_stats_collection():
     collection = get_collection()
     collection.create_index([('username', 1), ('year', 1)], unique=True)
 
@@ -54,9 +105,15 @@ def setup_collection():
 def q_get_nr_tweets_per_day(username, begin_date, end_date):
     collection = get_collection('tweets')
 
-    m = {'$match': {'username': username,
-                    'datetime': {'$gte': begin_date,
-                                 '$lte': end_date}}}
+    m = {
+        '$match': {
+            'username': username,
+            'datetime': {
+                '$gte': begin_date,
+                '$lte': end_date
+            }
+        }
+    }
     g = {'$group': {'_id': '$date',
                     'n_tweets': {'$sum': 1}}}
     p = {'$project': {'date': {'$dateFromString': {'dateString': '$_id'}},
@@ -94,16 +151,18 @@ def q_bulk_write_a_stat(requests):
 
 def q_insert_a_stat(username, freq, stat):
     collection = get_collection(stat_collection_name)
-    d = {'username': username,
-         'year': stat['datetime'].year,
-         'timestamp': datetime.now(),
-         f'{freq}': [{
-             'datetime': stat['datetime'].to_pydatetime(),
-             'sum': stat['sum'],
-             'max': stat['max'],
-             'mean': stat['mean'],
-             'cumsum': stat['cumsum']}]
-         }
+    d = {
+        'username': username,
+        'year': stat['datetime'].year,
+        'timestamp': datetime.now(),
+        f'{freq}': [{
+            'datetime': stat['datetime'].to_pydatetime(),  # Todo: probably not necessary
+            'sum': stat['sum'],
+            'max': stat['max'],
+            'mean': stat['mean'],
+            'cumsum': stat['cumsum']
+        }]
+    }
     result = collection.insert_one(d)
     return result
 
@@ -135,7 +194,6 @@ def q_upsert_a_stat(username, freq, stat):
 
 def q_update_a_stat(username, freq, stat):
     collection = get_collection(stat_collection_name)
-    print(username, freq, stat)
     f = {
         'username': username,
         'year': stat['datetime'].year,
@@ -179,8 +237,7 @@ def q_update_a_year_stat(username, freq, stats):
             try:
                 q_upsert_a_stat(username, freq, stat)
             except DuplicateKeyError:  # For when inserting iso upserting.
-                # q_update_a_stat(username, freq, stat)
-                print(username, freq, stat)
+                logger.debug(f'DuplicateKeyError | {username}, {freq}, {stat}')
             except:
                 print(sys.exc_info())
                 raise
@@ -188,14 +245,16 @@ def q_update_a_year_stat(username, freq, stats):
 
 def q_populate_stats(username, freq, stats):
     """
-    This only works with a unique index on username+year
+    todo: This only works with a unique index on username+year
     """
+    logger.warning('This only works with a unique index on username+year!')
     collection = get_collection(stat_collection_name)
     dts = stats['datetime'].to_list()
     years = sorted(set([dt.year for dt in dts]))
     for year in years:
         year_stat = stats.loc[datetime(year, 1, 1, 0, 0, 0):datetime(year, 12, 31, 23, 59, 59)]
-        # Try to insert new document with empty stats. Make sure there is a unique index on username+year
+
+        # Try to insert new document with empty stats. Make sure there is a unique index on username+year !
         d = {
             'username': username,
             'year': year,
@@ -205,13 +264,14 @@ def q_populate_stats(username, freq, stats):
             collection.insert_one(d)
 
         except DuplicateKeyError:
-            logger.debug(f'DuplicateKeyError | {username}, {freq}, {year}')
+            # We have an empty stat for username and year so every doc will raise DuplicateKeyError
+            pass
         except:
             print(sys.exc_info())
             raise
         finally:
             pass
-        # We are sure that the empty doc exist. Lets bulk update it with stats
+        # Now are sure that the empty doc exist. Lets bulk update it with stats
         requests = []
         for stat in year_stat.to_dict('records'):
             f = {
@@ -246,7 +306,7 @@ def q_get_stats(username, freq):
     p = {
         'username': 1,
         f'{freq}': 1,
-        '_id': -1
+        '_id': 0
     }
     result = collection.find(f, p)
 
