@@ -14,7 +14,7 @@ from config import DATABASE
 from tools.logger import logger
 
 """
-Group of queries to store and retrief data from the stats collections.
+Group of queries to store and retrief data from the profile_stats collections.
 The queries start with 'q_' 
 Queries accept and return a dict or a lists of dicts when suitable
 
@@ -79,10 +79,10 @@ def upsert_tokens():
         'username': '',
         'year': 0,
         'month': 0,
-        'metadata': [{
+        'tweet_stats': [{
             'tweet_id': '',
             'datetime': None,
-            'metadata': [],
+            'tweet_stats': [],
             'emojis': [],
             'hashtags': [],
             'n_tokens': 0,
@@ -132,44 +132,46 @@ def q_get_tweet_datetimes(username, begin_date, end_date):
                      '$lte': end_date}
     }
     p = {'datetime': 1, '_id': 0}
-    result = collection.find(f, p)
+    result = collection.find(f, p).sort('datetime', ASCENDING)
     return list(result)
 
 
-def q_get_a_stat(username, freq):
-    collection = get_collection(stat_collection_name)
-    f = {'username': username, 'freq': freq}
-    result = collection.find_one()
-    return list(result) if result else []
+# def q_get_a_stat(username, freq):
+#     collection = get_collection(stat_collection_name)
+#     f = {'username': username, 'freq': freq}
+#     result = collection.find_one()
+#     return list(result) if result else []
 
 
-def q_bulk_write_a_stat(requests):
+def q_bulk_write_profile_stats(requests):
     collection = get_collection(stat_collection_name)
     result = collection.bulk_write(requests)
     logger.debug(f'Bulk result | {result.bulk_api_result}')
 
 
-def q_insert_a_stat(username, freq, stat):
-    collection = get_collection(stat_collection_name)
-    d = {
-        'username': username,
-        'year': stat['datetime'].year,
-        'timestamp': datetime.now(),
-        f'{freq}': [{
-            'datetime': stat['datetime'].to_pydatetime(),  # Todo: probably not necessary
-            'sum': stat['sum'],
-            'max': stat['max'],
-            'mean': stat['mean'],
-            'cumsum': stat['cumsum']
-        }]
-    }
-    result = collection.insert_one(d)
-    return result
+#
+# def q_insert_a_stat(username, freq, stat):
+#     collection = get_collection(stat_collection_name)
+#     d = {
+#         'username': username,
+#         'year': stat['datetime'].year,
+#         'timestamp': datetime.now(),
+#         f'{freq}': [{
+#             'datetime': stat['datetime'].to_pydatetime(),  # Todo: probably not necessary
+#             'sum': stat['sum'],
+#             'max': stat['max'],
+#             'mean': stat['mean'],
+#             'cumsum': stat['cumsum']
+#         }]
+#     }
+#     result = collection.insert_one(d)
+#     return result
 
 
-def q_upsert_a_stat(username, freq, stat):
+def q_upsert_a_profile_stat(username, freq, stat):
     collection = get_collection(stat_collection_name)
     f = {
+        'type': 'profile_stat',
         'username': username,
         'year': stat['datetime'].year
     }
@@ -192,9 +194,10 @@ def q_upsert_a_stat(username, freq, stat):
     return result
 
 
-def q_update_a_stat(username, freq, stat):
+def q_update_a_profile_stat(username, freq, stat):
     collection = get_collection(stat_collection_name)
     f = {
+        'type': 'profile_stat',
         'username': username,
         'year': stat['datetime'].year,
         f'{freq}.datetime': stat['datetime']
@@ -219,9 +222,9 @@ def q_delete_all_stats():
     collection.delete_many({})
 
 
-def q_update_a_year_stat(username, freq, stats):
+def q_update_profile_stats(username, freq, profile_stats):
     # Todo: This method is a bit hacky and could probably be improved.
-    #       The method receives a list of stats-dicts for  a certain freq. It then tries to update
+    #       The method receives a list of profile_stats-dicts for  a certain freq. It then tries to update
     #       the stat in the array f'{freq}'. It checks it the datetime matches. If true then it uses the position operator $
     #       to find the index of datetime in f'{freq}'.datetime, and uses that index to update the stat.
     #       If the new stat has a different value then it gets updated and result.modified_count is not 0.
@@ -231,11 +234,11 @@ def q_update_a_year_stat(username, freq, stats):
     #       upsert.
     # Inspiration: http://blog.rcard.in/database/mongodb/time-series/2017/01/31/implementing-time-series-in-mongodb.html
     collection = get_collection(stat_collection_name)
-    for stat in stats.to_dict('records'):
-        result = q_update_a_stat(username, freq, stat)
+    for stat in profile_stats.to_dict('records'):
+        result = q_update_a_profile_stat(username, freq, stat)
         if not result.modified_count:  # No update means that the document or stat doesn't exists
             try:
-                q_upsert_a_stat(username, freq, stat)
+                q_upsert_a_profile_stat(username, freq, stat)
             except DuplicateKeyError:  # For when inserting iso upserting.
                 logger.debug(f'DuplicateKeyError | {username}, {freq}, {stat}')
             except:
@@ -243,19 +246,20 @@ def q_update_a_year_stat(username, freq, stats):
                 raise
 
 
-def q_populate_stats(username, freq, stats):
+def q_populate_profile_stats(username, freq, profile_stats):
     """
     todo: This only works with a unique index on username+year
     """
     logger.warning('This only works with a unique index on username+year!')
     collection = get_collection(stat_collection_name)
-    dts = stats['datetime'].to_list()
+    dts = profile_stats['datetime'].to_list()
     years = sorted(set([dt.year for dt in dts]))
     for year in years:
-        year_stat = stats.loc[datetime(year, 1, 1, 0, 0, 0):datetime(year, 12, 31, 23, 59, 59)]
+        year_stat = profile_stats.loc[datetime(year, 1, 1, 0, 0, 0):datetime(year, 12, 31, 23, 59, 59)]
 
-        # Try to insert new document with empty stats. Make sure there is a unique index on username+year !
+        # Try to insert new document with empty profile_stats. Make sure there is a unique index on username+year !
         d = {
+            'type': 'profile_stat',
             'username': username,
             'year': year,
             'timestamp': datetime.now()
@@ -271,10 +275,11 @@ def q_populate_stats(username, freq, stats):
             raise
         finally:
             pass
-        # Now are sure that the empty doc exist. Lets bulk update it with stats
+        # Now are sure that the empty doc exist. Lets bulk update it with profile_stats
         requests = []
         for stat in year_stat.to_dict('records'):
             f = {
+                'type': 'profile_stat',
                 'username': username,
                 'year': stat['datetime'].year,
             }
@@ -294,24 +299,25 @@ def q_populate_stats(username, freq, stats):
                 }
             }
             requests.append(UpdateOne(f, u, True))
-        q_bulk_write_a_stat(requests)
+        q_bulk_write_profile_stats(requests)
 
 
-def q_get_stats(username, freq):
-    collection = get_collection(stat_collection_name)
-    f = {
-        'username': username,
-        f'{freq}': {'$exists': True}
-    }
-    p = {
-        'username': 1,
-        f'{freq}': 1,
-        '_id': 0
-    }
-    result = collection.find(f, p)
-
-    return list(result)
+# def q_get_stats(username, freq):
+#     collection = get_collection(stat_collection_name)
+#     f = {
+#         'username': username,
+#         f'{freq}': {'$exists': True}
+#     }
+#     p = {
+#         'username': 1,
+#         f'{freq}': 1,
+#         '_id': 0
+#     }
+#     result = collection.find(f, p)
+#
+#     return list(result)
 
 
 if __name__ == '__main__':
     pass
+    q_delete_all_stats()

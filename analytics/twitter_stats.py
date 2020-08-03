@@ -7,7 +7,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from database.analytics_facade import get_tweet_datetimes, update_stats, populate_stats, delete_all_stats
+from database.analytics_facade import get_tweet_datetimes, update_profile_stats, populate_profile_stats, delete_all_stats
 from database.twitter_facade import get_usernames
 from tools.logger import logger
 from tools.utils import set_pandas_display_options
@@ -26,8 +26,8 @@ class TwitterStats:
         self.begin_date = self.c['begin_date']
         self.end_date = self.c['end_date']
         self.usernames_df = None
-        self.stats_job = False
-        self.metadata_job = False
+        self.profile_stats_job = False
+        self.tweet_stat_job = False
         self.is_populate = False
 
     # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -54,44 +54,48 @@ class TwitterStats:
         return self
 
     @property
-    def stats(self):
-        self.stats_job = True
+    def profile_stats(self):
+        self.profile_stats_job = True
         return self
 
     @property
-    def metadata(self):
-        self.metadata_job = False
+    def tweet_stats(self):
+        self.tweet_stat_job = False
         return self
 
     def run(self):
         for _, user in self.usernames_df.iterrows():
             username = user['username']
-            logger.info(f'Saving stats | {username}')
-            if self.stats_job: self.save_stats(username)
+            logger.info(f'Saving profile_stats | {username}')
+            if self.profile_stats_job: self.save_profile_stats(username)
 
-    def save_stats(self, username):
+    def save_profile_stats(self, username):
         tweet_datetimes = get_tweet_datetimes(username)
         if not tweet_datetimes.empty:
             tweet_datetimes['n_tweets'] = 1
             for freq in ['D', 'W', 'M', 'A']:
-                stats = self._calculate_stats(tweet_datetimes, freq)
+                stats = self._calculate_profile_stats(tweet_datetimes, freq)
                 if self.is_populate:
-                    populate_stats(username, freq, stats)
+                    populate_profile_stats(username, freq, stats)
                 else:
-                    update_stats(username, freq, stats)
+                    update_profile_stats(username, freq, stats)
             return stats
         else:
             logger.error(f'User has no tweets | {username}')
             return
 
-    def save_metadata(self, username):
+    def save_tweet_stats(self, username):
+        # per tweet: tweet_id, concersation_id,rreply_to,nlikes, nreplies,nretweets,is_reply,hashtags, datetime, day, hour,
+        # hashtags, stemmed tokens, pos, is_oov, is_emoji
+
         pass
 
-    def _calculate_stats(self, tweet_datetimes, freq):
+    def _calculate_profile_stats(self, tweet_datetimes, freq):
+        begin, end = tweet_datetimes['datetime'].min(), tweet_datetimes['datetime'].max()
         tweet_datetimes = tweet_datetimes.set_index('datetime')
         tweets_per_day = tweet_datetimes['n_tweets'].resample('D').sum()
         stats = tweet_datetimes.resample(freq).sum()
-        idx = pd.date_range(self.begin_date, self.end_date, freq='D')
+        idx = pd.date_range(begin, end, freq='D')
         tweets_per_day = tweets_per_day.reindex(idx, fill_value=0)
         stats['total'] = stats['n_tweets'].cumsum()
         stats = tweets_per_day.resample(freq).agg(['sum', 'mean', 'max'])
@@ -101,5 +105,5 @@ class TwitterStats:
 
 if __name__ == '__main__':
     ts = TwitterStats()
-    # ts.users_sample(1).populate.stats.run()
-    ts.users_sample(1).metadata.run()
+    ts.users_list(['mboudry']).populate.profile_stats.run()
+    # ts.users_sample(1).tweet_stats.run()

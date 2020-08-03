@@ -8,7 +8,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from database.analytics_queries import q_get_nr_tweets_per_day, q_get_tweet_datetimes, q_populate_stats, q_delete_all_stats, q_get_stats, q_update_a_year_stat, q_get_tweets
+from database.analytics_queries import q_get_nr_tweets_per_day, q_get_tweet_datetimes, q_populate_profile_stats, q_delete_all_stats, q_update_profile_stats, q_get_tweets
 from tools.logger import logger
 from tools.utils import set_pandas_display_options
 
@@ -55,30 +55,30 @@ def get_tweet_datetimes(username, begin_date=datetime(2000, 1, 1), end_date=date
     return pd.DataFrame(tweet_datetimes)
 
 
+def update_profile_stats(username, freq, profile_stats):
+    profile_stats['datetime'] = profile_stats.index.values
+    q_update_profile_stats(username, freq, profile_stats)
 
-def update_stats(username, freq, stats):
-    stats['datetime'] = stats.index.values
-    q_update_a_year_stat(username, freq, stats)
 
-
-def populate_stats(username, freq, stats):
-    stats['datetime'] = stats.index.values
-    q_populate_stats(username, freq, stats)
+def populate_profile_stats(username, freq, profile_stats):
+    profile_stats['datetime'] = profile_stats.index.values
+    q_populate_profile_stats(username, freq, profile_stats)
 
 
 def delete_all_stats():
-    logger.warning(f'The stats collecion will droped !!!')
+    logger.warning(f'All profile_stats will be deleted !!!')
     input("Press Enter to continue...")
     q_delete_all_stats()
 
 
-def get_stats(username, freq):
-    stats = q_get_stats(username, freq)
-    df = pd.DataFrame()
-    for stat in stats:
-        df = df.append(pd.DataFrame(stat[f'{freq}']))
-
-    return df
+#
+# def get_stats(username, freq):
+#     stats = q_get_stats(username, freq)
+#     df = pd.DataFrame()
+#     for stat in stats:
+#         df = df.append(pd.DataFrame(stat[f'{freq}']))
+#
+#     return df
 
 
 if __name__ == '__main__':
