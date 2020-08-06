@@ -36,7 +36,6 @@ IMPLEMENTED QUERIES
 """
 database = DATABASE
 stat_collection_name = 'twitter_stats'
-# token_collection_name = 'tokens_stats'
 tweets_collection_name = 'tweets'
 
 
@@ -44,12 +43,16 @@ def get_collection(col=stat_collection_name):  # Todo: Replace get_collection() 
     client = MongoClient()
     db = client[database]
     collection = db[col]
-
     return collection
 
 
+def setup_stats_collection():
+    collection = get_collection()
+    collection.create_index([('username', 1), ('year', 1)], unique=True)
+
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# TOKENS
+# TWEET STATS
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 def q_get_tweets(username, begin_date, end_date):
@@ -65,65 +68,42 @@ def q_get_tweets(username, begin_date, end_date):
         '_id': 0,
         'username': 1,
         'tweet_id': 1,
+        'conversation_id': 1,
         'datetime': 1,
         'tweet': 1,
-        'hashtags': 1
+        'hashtags': 1,
+        'reply_to.username': 1,
+        'is_reply': 1,
+        'nlikes': 1,
+        'nreplies': 1,
+        'nretweets': 1
     }
-    result = collection.find(f, p)
+    result = collection.find(f, p).sort('datetime')
     return list(result)
 
 
-def upsert_tokens():
-    pass
-    d = {
-        'username': '',
-        'year': 0,
-        'month': 0,
-        'tweet_stats': [{
-            'tweet_id': '',
-            'datetime': None,
-            'tweet_stats': [],
-            'emojis': [],
-            'hashtags': [],
-            'n_tokens': 0,
-            'n_emojis': 0,
-            'n_hashtags': 0
-        }]
+def q_upsert_tweet_stat(username, year, month, stats, pos_dict):
+    collection = get_collection(stat_collection_name)
+    f = {
+        'type': 'tweet_stat',
+        'username': username,
+        'year': year,
+        'month': month
     }
+    u = {
+        '$set':
+            {
+                'stats': stats,
+                'pos': pos_dict,
+                'timestamp': datetime.now()
+            }
+    }
+    collection.update_one(f, u, upsert=True)
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # STATS
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-def setup_stats_collection():
-    collection = get_collection()
-    collection.create_index([('username', 1), ('year', 1)], unique=True)
-
-
-def q_get_nr_tweets_per_day(username, begin_date, end_date):
-    collection = get_collection('tweets')
-
-    m = {
-        '$match': {
-            'username': username,
-            'datetime': {
-                '$gte': begin_date,
-                '$lte': end_date
-            }
-        }
-    }
-    g = {'$group': {'_id': '$date',
-                    'n_tweets': {'$sum': 1}}}
-    p = {'$project': {'date': {'$dateFromString': {'dateString': '$_id'}},
-                      'n_tweets': 1, '_id': 0}}
-    s = {'$sort': {'date': ASCENDING}}
-
-    result = collection.aggregate([m, g, p, s])
-    return list(result)
-
-
 def q_get_tweet_datetimes(username, begin_date, end_date):
     collection = get_collection('tweets')
     f = {
@@ -136,36 +116,10 @@ def q_get_tweet_datetimes(username, begin_date, end_date):
     return list(result)
 
 
-# def q_get_a_stat(username, freq):
-#     collection = get_collection(stat_collection_name)
-#     f = {'username': username, 'freq': freq}
-#     result = collection.find_one()
-#     return list(result) if result else []
-
-
 def q_bulk_write_profile_stats(requests):
     collection = get_collection(stat_collection_name)
     result = collection.bulk_write(requests)
     logger.debug(f'Bulk result | {result.bulk_api_result}')
-
-
-#
-# def q_insert_a_stat(username, freq, stat):
-#     collection = get_collection(stat_collection_name)
-#     d = {
-#         'username': username,
-#         'year': stat['datetime'].year,
-#         'timestamp': datetime.now(),
-#         f'{freq}': [{
-#             'datetime': stat['datetime'].to_pydatetime(),  # Todo: probably not necessary
-#             'sum': stat['sum'],
-#             'max': stat['max'],
-#             'mean': stat['mean'],
-#             'cumsum': stat['cumsum']
-#         }]
-#     }
-#     result = collection.insert_one(d)
-#     return result
 
 
 def q_upsert_a_profile_stat(username, freq, stat):
@@ -302,22 +256,6 @@ def q_populate_profile_stats(username, freq, profile_stats):
         q_bulk_write_profile_stats(requests)
 
 
-# def q_get_stats(username, freq):
-#     collection = get_collection(stat_collection_name)
-#     f = {
-#         'username': username,
-#         f'{freq}': {'$exists': True}
-#     }
-#     p = {
-#         'username': 1,
-#         f'{freq}': 1,
-#         '_id': 0
-#     }
-#     result = collection.find(f, p)
-#
-#     return list(result)
-
-
 if __name__ == '__main__':
     pass
-    q_delete_all_stats()
+    # q_delete_all_stats()

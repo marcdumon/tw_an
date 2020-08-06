@@ -8,7 +8,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from database.analytics_queries import q_get_nr_tweets_per_day, q_get_tweet_datetimes, q_populate_profile_stats, q_delete_all_stats, q_update_profile_stats, q_get_tweets
+from database.analytics_queries import q_get_tweet_datetimes, q_populate_profile_stats, q_delete_all_stats, q_update_profile_stats, q_get_tweets, q_upsert_tweet_stat
 from tools.logger import logger
 from tools.utils import set_pandas_display_options
 
@@ -29,7 +29,7 @@ IMPLEMENTED FUNCTIONS
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# TOKENS
+# TWEET STATS
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 def get_tweets(username, begin_date=None, end_date=None):
     begin_date = begin_date if begin_date else datetime.min
@@ -39,12 +39,31 @@ def get_tweets(username, begin_date=None, end_date=None):
     return tweets_df
 
 
+def upsert_tweet_stat(username, year, month, tweet_stats, pos_dict):
+    stats = []
+    # print(tweet_stats.columns)
+    for _, tweet_stat in tweet_stats.iterrows():
+        stat = {
+            'tweet_id': tweet_stat['tweet_id'],
+            'conversation_id': tweet_stat['conversation_id'],
+            'datetime': tweet_stat['datetime'],
+            'hashtags': tweet_stat['hashtags'],
+            'reply_to': tweet_stat['reply_to'],
+            'is_reply': tweet_stat['is_reply'],
+            'nlikes': tweet_stat['nlikes'],
+            'nreplies': tweet_stat['nreplies'],
+            'nretweets': tweet_stat['nretweets'],
+            'day': tweet_stat['day'],
+            'hour': tweet_stat['hour'],
+            'len': tweet_stat['len']
+        }
+        stats.append(stat)
+    q_upsert_tweet_stat(username, year, month, stats, pos_dict)
+
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# STATS
+# PROFILE STATS
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-def get_nr_tweets_per_day(username, start_date=datetime(2000, 1, 1), end_date=datetime(2035, 1, 1)):
-    nr_tweets_per_day = q_get_nr_tweets_per_day(username, start_date, end_date)
-    return pd.DataFrame(nr_tweets_per_day)
 
 
 def get_tweet_datetimes(username, begin_date=datetime(2000, 1, 1), end_date=datetime(2035, 1, 1)):
@@ -71,16 +90,7 @@ def delete_all_stats():
     q_delete_all_stats()
 
 
-#
-# def get_stats(username, freq):
-#     stats = q_get_stats(username, freq)
-#     df = pd.DataFrame()
-#     for stat in stats:
-#         df = df.append(pd.DataFrame(stat[f'{freq}']))
-#
-#     return df
-
-
 if __name__ == '__main__':
     pass
     delete_all_stats()
+    # get_tweets('samvanrooy1')

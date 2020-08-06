@@ -3,11 +3,12 @@
 # src - test_analytics.py
 # md
 # --------------------------------------------------------------------------------------------------------
-from analytics.data_factory import DataFactory
+from analytics.twitter_stats import TwitterStats
 
-df = DataFactory()
-x = df.users_list(['franckentheo']).stats.run()
-# x = df.users_all.stats.run()
+ts = TwitterStats()
+# ts.users_list(['mboudry']).populate.profile_stats.run()
+# ts.users_list(['mboudry']).tweet_stats.run()
+ts.users_all.tweet_stats.run()
 
 if __name__ == '__main__':
     pass

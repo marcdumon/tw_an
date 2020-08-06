@@ -37,13 +37,17 @@ class TweetCorpus:
         self.users_corpus_path = '/media/Development/Twitter_Analytics/src/analytics/data/users_corpora/'
         self.corpora_path = '/media/Development/Twitter_Analytics/src/analytics/data/corpora/'
         self.corpus_name = 'full_corpus'
+
         self.nlp = spacy.load('nl_core_news_lg',
                               disable=[
-                                  'parser',
-                                  'tagger',
-                                  'ner'
+                                  # 'parser',
+                                  # 'tagger',
+                                  # 'ner'
                               ])
         self.nlp.max_length = self.nlp.max_length * 15
+        self.bigrams = None
+        self.trigrams = None
+        self.quadgrams = None
 
         # emoji = Emoji(self.nlp)
         # self.nlp.add_pipe(emoji, first=True)
@@ -52,7 +56,6 @@ class TweetCorpus:
         t0 = datetime.now()
         usernames = get_usernames()
         if sample: usernames = usernames.sample(sample)
-
         print(usernames)
         for username in usernames['username']:
             # for username in ['a_blancquaert']:
@@ -105,6 +108,7 @@ class TweetCorpus:
         if hashtags: tweet = replace_hashtags(tweet)
         if accents: tweet = remove_accents(tweet)
         if punctuation: tweet = remove_punctuation(tweet, marks='.,?\/()[];:!*+-*="\'▶•◦⁃∞')  # specify marks otherwise @ will also be removed!
+
         if whitespace:
             tweet = normalize_whitespace(tweet)
             tweet = ' '.join(tweet.split())  # remove excess whitespace
@@ -115,10 +119,15 @@ class TweetCorpus:
         # Lemmatize
         if keep_hashtag: tweet = re.sub(r'#(\w+)', r'zzzplaceholderzzz\1', tweet)  # lemmatizer splits #xxx into #, xxx
         doc = self.nlp(tweet)
-        doc = [t.lemma_ for t in doc]  # todo: if len(t)>1 ex: 't schip -> t, schip
+        doc = [t.lemma_ for t in doc if not t.is_stop]  # todo: if len(t)>1 ex: 't schip -> t, schip
         tweet = ' '.join(doc)
         if keep_hashtag: tweet = re.sub(r'zzzplaceholderzzz', r'#', tweet)
         return tweet
+
+    def pos(self, text):
+        doc = self.nlp(text)
+        pos = [{t.pos_: t.lemma_} for t in doc if (not t.is_stop) and (len(t) > 2) and (t.text[0] != '@')]
+        return pos
 
     def make_bigrams(self):
         t0 = datetime.now()
@@ -161,6 +170,12 @@ class TweetCorpus:
         print(dictionary)
         print('total time:', datetime.now() - t0)
         # print(dictionary.token2id)
+
+    def ngrams(self, tweet):
+        if not self.bigrams: self.bigrams = Phrases.load(self.corpora_path + self.corpus_name + '_bigrams.pkl')
+        if not self.trigrams: self.trigrams = Phrases.load(self.corpora_path + self.corpus_name + '_trigrams.pkl')
+        if not self.quadgrams: self.quadgrams = Phrases.load(self.corpora_path + self.corpus_name + '_quadgrams.pkl')
+        return self.quadgrams[self.trigrams[self.bigrams[tweet]]]
 
     def tokenize_tweets(self, username, begin_date=None, end_date=None):
         t0 = datetime.now()
@@ -226,6 +241,17 @@ class TweetCorpus:
         print(t2.vocab_size)
         # print(t3.vocab_size)
 
+    def xxx(self, tweet_txt):
+        # adjectives, auxilliary,nouns,verbs
+
+        tweet_txt = self.normalize_tweet(tweet_txt, numbers=False, hashtags=False, emojis=False)
+        for token in self.nlp(tweet_txt):
+            if token.is_stop or len(token) < 3: continue
+
+            print(token.lemma_)
+
+        pass
+
 
 if __name__ == '__main__':
     pass
@@ -233,4 +259,7 @@ if __name__ == '__main__':
     # tok.make_users_copus(sample=5)
     # tok.make_big_corpus()
     # tok.make_bigrams()
-    tok.tokenize()
+    # tok.tokenize()
+    # print(tok.ngrams(['dit', 'is', 'de', 'n', 'va', 'van', 'bart', 'de', 'wever', 'en', 'elio', 'di', 'ruppo', 'gwendolyn', 'rutten']))
+    tok.xxx(
+        'In de periode van 25 tot 31 juli zijn er in ons land gemiddeld 517 coronabesmettingen per dag bij gekomen. En de lockdown doet scheiden. Het aantal echtscheidingen is ná de versoepeling van de strenge coronamaatregelen sterk gestegen. Volg alle updates in onze liveblog.')
